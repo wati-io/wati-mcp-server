@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "whatsapp-mcp"
+name = "wati-mcp"
 version = "0.2.0"
 description = "WhatsApp MCP Server using Wati API v3"
 requires-python = ">=3.11"
