@@ -7,23 +7,21 @@ startCommand:
     type: object
     required:
       - watiApiBaseUrl
-      - watiTenantId
       - watiAuthToken
     properties:
       watiApiBaseUrl:
         type: string
-        description: The base URL for the Wati API
-      watiTenantId:
-        type: string
-        description: Your Wati tenant ID
+        description: The base URL for the Wati API (e.g. https://live-mt-server.wati.io)
       watiAuthToken:
         type: string
-        description: Your Wati authentication token
+        description: Your Wati authentication token (Bearer token)
+      watiTenantId:
+        type: string
+        description: Optional Wati tenant ID (only needed for multi-channel setups)
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({command: 'whatsapp-mcp', args: [], env: {WATI_API_BASE_URL: config.watiApiBaseUrl, WATI_TENANT_ID: config.watiTenantId, WATI_AUTH_TOKEN: config.watiAuthToken}})
+    (config) => ({command: 'whatsapp-mcp', args: [], env: {WATI_API_BASE_URL: config.watiApiBaseUrl, WATI_AUTH_TOKEN: config.watiAuthToken, ...(config.watiTenantId ? {WATI_TENANT_ID: config.watiTenantId} : {})}})
   exampleConfig:
-    watiApiBaseUrl: https://api.wati.io
-    watiTenantId: tenant_12345
-    watiAuthToken: abcd1234efgh5678
+    watiApiBaseUrl: https://live-mt-server.wati.io
+    watiAuthToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

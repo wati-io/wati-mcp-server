@@ -1,272 +1,196 @@
-from datetime import datetime
-from dataclasses import dataclass
 from typing import Optional, List, Tuple, Dict, Any
-import os
-import requests
-import json
 
-from .wati_api import wati_api, Message, Chat, Contact, MessageContext
+from .wati_api import wati_api, Message, Contact
+
+
+# ─── Contacts ──────────────────────────────────────────────────────
 
 def search_contacts(query: str) -> List[Dict[str, Any]]:
-    """
-    Search WhatsApp contacts by name or phone number.
-    Returns all available contact information including name, phone number, WhatsApp ID, 
-    creation date, status, custom parameters, and other fields from the WATI API.
-    """
+    """Search WhatsApp contacts by name or phone number."""
     contacts = wati_api.search_contacts(query)
-    
-    # Convert to dictionary format for the MCP API
-    result = []
-    for contact in contacts:
-        # Create a dictionary with all available contact fields
-        contact_dict = {
-            "phone_number": contact.phone_number,
-            "name": contact.name,
-            "waid": contact.waid,
-            "id": contact.id,
-            "source": contact.source,
-            "contact_status": contact.contact_status,
-            "created": contact.created,
-            "last_updated": contact.last_updated,
-            "allow_broadcast": contact.allow_broadcast,
-            "first_name": contact.first_name,
-            "full_name": contact.full_name,
-            "photo": contact.photo,
-            "opted_in": contact.opted_in,
-            "tenant_id": contact.tenant_id,
-            "tag_name": contact.tag_name,
-            "display_id": contact.display_id
-        }
-        
-        # Add custom params if available
-        if contact.custom_params:
-            # Convert custom params from list of dicts to a single dict for easier access
-            custom_params_dict = {}
-            for param in contact.custom_params:
-                if isinstance(param, dict) and "name" in param and "value" in param:
-                    custom_params_dict[param["name"]] = param["value"]
-            
-            contact_dict["custom_params"] = custom_params_dict
-        
-        result.append(contact_dict)
-    
-    return result
+    return [_contact_to_dict(c) for c in contacts]
 
-def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    sender_phone_number: Optional[str] = None,
-    chat_waid: Optional[str] = None,
-    query: Optional[str] = None,
-    limit: int = 20,
-    page: int = 0,
-    include_context: bool = True,
-    context_before: int = 1,
-    context_after: int = 1
+
+def list_contacts(
+    page_size: int = 20, page_number: int = 1
 ) -> List[Dict[str, Any]]:
-    """Get WhatsApp messages matching specified criteria with optional context."""
-    # Convert string dates to datetime if provided
-    from_date = None
-    to_date = None
-    
-    if after:
-        try:
-            from_date = datetime.fromisoformat(after)
-        except ValueError:
-            raise ValueError(f"Invalid date format for 'after': {after}. Please use ISO-8601 format.")
+    """List contacts with pagination."""
+    contacts = wati_api.get_contacts(page_size=page_size, page_number=page_number)
+    return [_contact_to_dict(c) for c in contacts]
 
-    if before:
-        try:
-            to_date = datetime.fromisoformat(before)
-        except ValueError:
-            raise ValueError(f"Invalid date format for 'before': {before}. Please use ISO-8601 format.")
-            
-    # Use the phone number or WAID provided
-    phone_number = None
-    if chat_waid:
-        phone_number = chat_waid
-    elif sender_phone_number:
-        phone_number = sender_phone_number
-    
-    if not phone_number:
-        return []
-    
-    # Get messages from the API
-    messages = wati_api.get_messages(
-        whatsapp_number=phone_number,
-        page_size=limit,
-        page_number=page + 1,  # API uses 1-based indexing
-        from_date=from_date,
-        to_date=to_date
-    )
-    
-    # Format the messages for the response
-    result = []
-    for message in messages:
-        result.append({
-            "timestamp": message.timestamp.isoformat(),
-            "sender": message.sender,
-            "content": message.content,
-            "is_from_me": message.is_from_me,
-            "chat_waid": message.chat_waid,
-            "id": message.id,
-            "media_type": message.media_type
-        })
-    
-    return result
 
-def format_message(message: Message, show_chat_info: bool = True) -> str:
-    """Format a single message with consistent formatting."""
-    output = ""
-    
-    output += f"[{message.timestamp:%Y-%m-%d %H:%M:%S}] "
-        
-    content_prefix = ""
-    if message.media_type:
-        content_prefix = f"[{message.media_type} - Message ID: {message.id} - Chat WAID: {message.chat_waid}] "
-    
-    sender_name = "Me" if message.is_from_me else message.sender
-    output += f"From: {sender_name}: {content_prefix}{message.content}\n"
-    
-    return output
+def get_contact(target: str) -> Dict[str, Any]:
+    """Get a single contact by phone or ID."""
+    contact = wati_api.get_contact(target)
+    if contact:
+        return _contact_to_dict(contact)
+    return {}
 
-def format_messages_list(messages: List[Message], show_chat_info: bool = True) -> str:
-    """Format a list of messages for display."""
-    output = ""
-    if not messages:
-        output += "No messages to display."
-        return output
-    
-    for message in messages:
-        output += format_message(message, show_chat_info)
-    
-    return output
 
-def list_chats(
-    query: Optional[str] = None,
-    limit: int = 20,
-    page: int = 0,
-    include_last_message: bool = True,
-    sort_by: str = "last_active"
+def add_contact(
+    whatsapp_number: str,
+    name: str,
+    custom_params: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
+    """Add a new WhatsApp contact."""
+    contact = wati_api.add_contact(whatsapp_number, name, custom_params)
+    if contact:
+        return _contact_to_dict(contact)
+    return {}
+
+
+def update_contacts(contacts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Bulk-update contacts (custom params)."""
+    updated = wati_api.update_contacts(contacts)
+    return [_contact_to_dict(c) for c in updated]
+
+
+def get_contact_count() -> int:
+    """Get total contact count."""
+    return wati_api.get_contact_count()
+
+
+def assign_contact_teams(target: str, teams: List[str]) -> bool:
+    """Assign a contact to teams."""
+    return wati_api.assign_contact_teams(target, teams)
+
+
+# ─── Messages / Conversations ─────────────────────────────────────
+
+def get_messages(
+    target: str,
+    page_size: int = 20,
+    page_number: int = 1,
 ) -> List[Dict[str, Any]]:
-    """Get WhatsApp chats matching specified criteria."""
-    # For now, just return a list of contacts as chats
-    contacts = wati_api.get_contacts(page_size=limit, page_number=page+1)
-    
-    result = []
-    for contact in contacts:
-        # Get the last message for this contact if requested
-        last_message = None
-        last_message_time = None
-        last_sender = None
-        last_is_from_me = None
-        
-        if include_last_message:
-            messages = wati_api.get_messages(contact.phone_number, page_size=1, page_number=1)
-            if messages:
-                last_message = messages[0].content
-                last_message_time = messages[0].timestamp.isoformat()
-                last_sender = messages[0].sender
-                last_is_from_me = messages[0].is_from_me
-        
-        chat = {
-            "waid": contact.waid,
-            "name": contact.name,
-            "last_message_time": last_message_time,
-            "last_message": last_message,
-            "last_sender": last_sender,
-            "last_is_from_me": last_is_from_me
-        }
-        
-        result.append(chat)
-    
-    return result
+    """Get conversation messages for a target (phone number or conversation ID)."""
+    messages = wati_api.get_messages(target, page_size=page_size, page_number=page_number)
+    return [_message_to_dict(m) for m in messages]
 
-def get_chat(chat_waid: str, include_last_message: bool = True) -> Dict[str, Any]:
-    """Get WhatsApp chat metadata by WAID."""
-    # Get contact info
-    contacts = wati_api.get_contacts(name=chat_waid)
-    
-    if not contacts:
-        return {}
-    
-    contact = contacts[0]
-    
-    # Get the last message if requested
-    last_message = None
-    last_message_time = None
-    last_sender = None
-    last_is_from_me = None
-    
-    if include_last_message:
-        messages = wati_api.get_messages(contact.phone_number, page_size=1, page_number=1)
-        if messages:
-            last_message = messages[0].content
-            last_message_time = messages[0].timestamp.isoformat()
-            last_sender = messages[0].sender
-            last_is_from_me = messages[0].is_from_me
-    
-    return {
-        "waid": contact.waid,
-        "name": contact.name,
-        "last_message_time": last_message_time,
-        "last_message": last_message,
-        "last_sender": last_sender,
-        "last_is_from_me": last_is_from_me
-    }
 
-def get_direct_chat_by_contact(sender_phone_number: str) -> Dict[str, Any]:
-    """Get WhatsApp chat metadata by sender phone number."""
-    return get_chat(sender_phone_number)
+def send_message(target: str, text: str) -> Tuple[bool, str]:
+    """Send a text message to a conversation."""
+    return wati_api.send_message(target, text)
 
-def get_contact_chats(waid: str, limit: int = 20, page: int = 0) -> List[Dict[str, Any]]:
-    """Get the WhatsApp chat for the specified contact."""
-    # With Wati, we only have direct chats
-    chat = get_chat(waid)
-    
-    if chat:
-        return [chat]
-    else:
-        return []
 
-def send_message(recipient: str, message: str) -> Tuple[bool, str]:
-    """Send a WhatsApp message to a contact."""
-    return wati_api.send_message(recipient, message)
+def send_file(target: str, file_path: str, caption: str = "") -> Tuple[bool, str]:
+    """Send a file attachment via multipart upload."""
+    return wati_api.send_file(target, file_path, caption)
 
-def send_file(recipient: str, media_path: str) -> Tuple[bool, str]:
-    """Send a file via WhatsApp to the specified recipient."""
-    return wati_api.send_file(recipient, media_path)
 
-def send_audio_message(recipient: str, media_path: str) -> Tuple[bool, str]:
-    """Send any audio file as a WhatsApp audio message to the specified recipient."""
-    # Wati API doesn't have a specific audio message endpoint, so we use the regular file endpoint
-    return wati_api.send_file(recipient, media_path)
+def send_file_via_url(
+    target: str, file_url: str, caption: Optional[str] = None
+) -> Tuple[bool, str]:
+    """Send a file by providing its URL (no local download needed)."""
+    return wati_api.send_file_via_url(target, file_url, caption)
 
-def download_media(message_id: str, chat_waid: str) -> Optional[str]:
-    """Download media from a WhatsApp message and return the local file path."""
-    # In Wati API, we need the filename, not message ID
-    # Since we don't have a way to get the filename from the message ID,
-    # we'll just use the message ID as the filename for now
+
+def download_media(message_id: str) -> Optional[str]:
+    """Download media by message ID and return the local file path."""
     return wati_api.download_media(message_id)
 
-def send_interactive_buttons(
-    recipient: str,
-    body_text: str,
-    buttons: List[Dict[str, str]],
-    header_text: Optional[str] = None,
-    footer_text: Optional[str] = None,
-    header_image: Optional[str] = None,
-    header_video: Optional[str] = None,
-    header_document: Optional[str] = None
+
+def send_interactive(
+    target: str,
+    interactive_type: str,
+    button_message: Optional[Dict] = None,
+    list_message: Optional[Dict] = None,
 ) -> Tuple[bool, str]:
-    """Send an interactive WhatsApp message with buttons."""
-    return wati_api.send_interactive_buttons(
-        recipient=recipient,
-        body_text=body_text,
-        buttons=buttons,
-        header_text=header_text,
-        footer_text=footer_text,
-        header_image=header_image,
-        header_video=header_video,
-        header_document=header_document
-    )
+    """Send an interactive message (buttons or list)."""
+    return wati_api.send_interactive(target, interactive_type, button_message, list_message)
+
+
+def assign_operator(target: str, assignee_email: Optional[str] = None) -> bool:
+    """Assign an operator to a conversation."""
+    return wati_api.assign_operator(target, assignee_email)
+
+
+def update_conversation_status(target: str, new_status: str) -> bool:
+    """Update conversation status (open, solved, pending, block)."""
+    return wati_api.update_conversation_status(target, new_status)
+
+
+# ─── Templates ─────────────────────────────────────────────────────
+
+def list_templates(page_size: int = 20, page_number: int = 1) -> List[Dict]:
+    """List message templates."""
+    return wati_api.list_templates(page_size, page_number)
+
+
+def get_template(template_id: str) -> Optional[Dict]:
+    """Get template details by ID."""
+    return wati_api.get_template(template_id)
+
+
+def send_template(
+    template_name: str,
+    broadcast_name: str,
+    recipients: List[Dict[str, Any]],
+    channel: Optional[str] = None,
+) -> Tuple[bool, str]:
+    """Send template messages (creates a broadcast)."""
+    return wati_api.send_template(template_name, broadcast_name, recipients, channel)
+
+
+# ─── Campaigns ─────────────────────────────────────────────────────
+
+def list_campaigns(
+    page_size: int = 20, page_number: int = 1, channel: Optional[str] = None
+) -> List[Dict]:
+    """List broadcast campaigns."""
+    return wati_api.list_campaigns(page_size, page_number, channel)
+
+
+def get_campaign(broadcast_id: str) -> Optional[Dict]:
+    """Get campaign details by ID."""
+    return wati_api.get_campaign(broadcast_id)
+
+
+# ─── Channels ──────────────────────────────────────────────────────
+
+def list_channels(page_size: int = 20, page_number: int = 1) -> List[Dict]:
+    """List WhatsApp channels."""
+    return wati_api.list_channels(page_size, page_number)
+
+
+# ─── Helpers ───────────────────────────────────────────────────────
+
+def _contact_to_dict(contact: Contact) -> Dict[str, Any]:
+    """Convert a Contact dataclass to a plain dict."""
+    d: Dict[str, Any] = {
+        "phone": contact.phone,
+        "name": contact.name,
+        "id": contact.id,
+        "wa_id": contact.wa_id,
+        "photo": contact.photo,
+        "created": contact.created,
+        "last_updated": contact.last_updated,
+        "contact_status": contact.contact_status,
+        "source": contact.source,
+        "channel_id": contact.channel_id,
+        "opted_in": contact.opted_in,
+        "allow_broadcast": contact.allow_broadcast,
+        "teams": contact.teams,
+        "channel_type": contact.channel_type,
+        "display_name": contact.display_name,
+    }
+    if contact.custom_params:
+        params = {}
+        for p in contact.custom_params:
+            if isinstance(p, dict) and "name" in p and "value" in p:
+                params[p["name"]] = p["value"]
+        d["custom_params"] = params
+    return d
+
+
+def _message_to_dict(message: Message) -> Dict[str, Any]:
+    """Convert a Message dataclass to a plain dict."""
+    return {
+        "id": message.id,
+        "text": message.text,
+        "timestamp": message.timestamp.isoformat(),
+        "owner": message.owner,
+        "type": message.type,
+        "status": message.status,
+        "operator_name": message.operator_name,
+        "conversation_id": message.conversation_id,
+    }
