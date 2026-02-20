@@ -21,7 +21,7 @@ startCommand:
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({command: 'whatsapp-mcp', args: [], env: {WATI_API_BASE_URL: config.watiApiBaseUrl, WATI_AUTH_TOKEN: config.watiAuthToken, ...(config.watiTenantId ? {WATI_TENANT_ID: config.watiTenantId} : {})}})
+    (config) => ({command: 'uvx', args: ['whatsapp-mcp'], env: {WATI_API_BASE_URL: config.watiApiBaseUrl, WATI_AUTH_TOKEN: config.watiAuthToken, ...(config.watiTenantId ? {WATI_TENANT_ID: config.watiTenantId} : {})}})
   exampleConfig:
     watiApiBaseUrl: https://live-mt-server.wati.io
     watiAuthToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
