@@ -33,10 +33,10 @@ Manage your WhatsApp conversations, contacts, templates, campaigns, and channels
 ### Installing via Smithery
 
 ```bash
-npx -y @smithery/cli install @wati-io/whatsapp-api-mcp-server --client claude
+npx -y @smithery/cli install @wati-io/wati-mcp-server --client claude
 ```
 
-[![smithery badge](https://smithery.ai/badge/@wati-io/whatsapp-api-mcp-server)](https://smithery.ai/server/@wati-io/whatsapp-api-mcp-server)
+[![smithery badge](https://smithery.ai/badge/@wati-io/wati-mcp-server)](https://smithery.ai/server/@wati-io/wati-mcp-server)
 
 ### Prerequisites
 
@@ -50,8 +50,8 @@ npx -y @smithery/cli install @wati-io/whatsapp-api-mcp-server --client claude
 1. **Clone this repository**
 
    ```bash
-   git clone https://github.com/wati-io/whatsapp-api-mcp-server.git
-   cd whatsapp-api-mcp-server
+   git clone https://github.com/wati-io/wati-mcp-server.git
+   cd wati-mcp-server
    ```
 
 2. **Configure the Wati API**
@@ -59,7 +59,6 @@ npx -y @smithery/cli install @wati-io/whatsapp-api-mcp-server --client claude
    Copy the example environment file and edit it with your Wati API credentials:
 
    ```bash
-   cd whatsapp-api-mcp-server
    cp .env.example .env
    # Edit .env with your Wati API credentials
    ```
@@ -82,7 +81,7 @@ npx -y @smithery/cli install @wati-io/whatsapp-api-mcp-server --client claude
          "command": "{{PATH_TO_UV}}",
          "args": [
            "--directory",
-           "{{PATH_TO_SRC}}/whatsapp-api-mcp-server/whatsapp-api-mcp-server",
+           "{{PATH_TO_SRC}}/wati-mcp-server",
            "run",
            "main.py"
          ]

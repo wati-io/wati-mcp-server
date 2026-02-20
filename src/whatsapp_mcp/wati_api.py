@@ -18,7 +18,7 @@ logger = logging.getLogger("wati_api")
 # Load environment variables from .env file
 env_paths = [
     Path(__file__).resolve().parent / '.env',
-    Path(__file__).resolve().parent.parent.parent / '.env',
+    Path(__file__).resolve().parent.parent.parent / '.env',  # repo root (src/whatsapp_mcp -> root)
 ]
 
 for env_path in env_paths:
